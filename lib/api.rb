@@ -5,16 +5,22 @@ require 'json'
 class Api < Sinatra::Base
   set :show_exceptions, true
 
-  def initialize(person_tsv, single_tsv, average_tsv)
-    @competitors = load_from_csv(person_tsv)
-    @single_results = load_from_csv(single_tsv)
-    @average_results = load_from_csv(average_tsv)
+  def initialize(person_tsv, single_tsv, average_tsv, results_tsv)
+    @competitors = load_array_from_csv(person_tsv)
+    @single_results = load_array_from_csv(single_tsv)
+    @average_results = load_array_from_csv(average_tsv)
+    @competitions = Hash.new { |h, k| h[k] = Set.new }
+    load_from_csv(results_tsv) do |row|
+      @competitions[row[7]] << row[0]
+    end
+
     super()
   end
 
   get "/competitors/:id/?" do
     id = params[:id]
     result = @competitors.find { |p| p[0] == id }
+    result = result + [@competitions[id].size]
     JSON.generate({person: hashify_person(result)})
   end
 
@@ -54,12 +60,19 @@ class Api < Sinatra::Base
         name: person[2],
         country: person[3],
         gender: person[4],
+        competition_count: person[5],
       }
     end
 
     def load_from_csv(file)
+      CSV.foreach(file, col_sep: "\t") do |row|
+        yield row
+      end
+    end
+
+    def load_array_from_csv(file)
       result = []
-      CSV.foreach(file, col_sep: "\t").map do |row|
+      load_from_csv(file) do |row|
         result << row
       end
       result.shift

@@ -12,11 +12,16 @@ describe "competitors endpoint" do
       expect(last_response.status).to eq 200
     end
 
+    let(:person) { json_response["person"] }
+
     it "returns the information for that guy" do
-      person = json_response["person"]
       expect(person["name"]).to eq "Ron van Bruchem"
       expect(person["country"]).to eq "Netherlands"
       expect(person["gender"]).to eq "m"
+    end
+
+    it "includes the amount of competitions the competitor attended" do
+      expect(person["competition_count"]).to eq 110
     end
   end
 
@@ -34,7 +39,7 @@ describe "competitors endpoint" do
     end
   end
 
-  describe "personal bests" do
+  describe "GET /competitors/:id/records" do
     context "competitor exists" do
       before do
         get "/competitors/2003BRUC01/records"
