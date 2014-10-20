@@ -1,12 +1,42 @@
 require 'sinatra'
 require 'csv'
 require 'json'
+require_relative './repositories'
+
+class WCAApi
+  def initialize(redis_url)
+    @redis_url = redis_url
+    @competitor_repo = CompetitorRepository.new(redis_url)
+  end
+
+  def import!(competitors_tsv, results_tsv)
+    CSV.foreach(competitors_tsv, headers: true, col_sep: "\t") do |row|
+      @competitor_repo.save!({id: row["id"], sub_id: row["subid"], country: row["countryId"], gender: row["gender"], name: row["name"], })
+    end
+    CSV.foreach(results_tsv, headers: true, col_sep: "\t") do |row|
+      @competitor_repo.attend_comp!(row["personId"], row["competitionId"])
+    end
+  end
+
+  def reset_db!
+    redis = Redis.new(url: @redis_url)
+    redis.flushdb
+    redis.quit
+  end
+
+  def find_competitor(id)
+    @competitor_repo.find(id)
+  end
+
+  def search_competitor(id)
+    @competitor_repo.search(id)
+  end
+end
 
 class Api < Sinatra::Base
   set :show_exceptions, true
 
-  def initialize(person_tsv, single_tsv, average_tsv, results_tsv)
-    @competitors = load_array_from_csv(person_tsv)
+  def initialize(single_tsv, average_tsv, results_tsv, core)
     @single_results = load_array_from_csv(single_tsv)
     @average_results = load_array_from_csv(average_tsv)
     @competitions = Hash.new { |h, k| h[k] = Set.new }
@@ -14,19 +44,18 @@ class Api < Sinatra::Base
       @competitions[row[7]] << row[0]
     end
 
+    @core = core
     super()
   end
 
   get "/competitors/:id/?" do
     id = params[:id]
-    result = @competitors.find { |p| p[0] == id }
-    result = result + [@competitions[id].size]
-    JSON.generate({person: hashify_person(result)})
+    r = @core.find_competitor(id)
+    JSON.generate({person: r})
   end
 
   get "/competitors/?" do
-    q = params[:q]
-    result = @competitors.select { |p| p[0].start_with?(q) }.map { |p| hashify_person(p) }
+    result = @core.search_competitor(params[:q])
     JSON.generate({competitors: result})
   end
 
