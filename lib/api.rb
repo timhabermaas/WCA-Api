@@ -13,7 +13,7 @@ class WCAApi
     CSV.foreach(competitors_tsv, headers: true, col_sep: "\t") do |row|
       @competitor_repo.save!({id: row["id"], sub_id: row["subid"], country: row["countryId"], gender: row["gender"], name: row["name"], })
     end
-    CSV.foreach(results_tsv, headers: true, col_sep: "\t") do |row|
+    CSV.foreach(results_tsv, headers: true, col_sep: "\t", encoding: "UTF-8") do |row|
       @competitor_repo.attend_comp!(row["personId"], row["competitionId"])
     end
     CSV.foreach(singles_tsv, headers: true, col_sep: "\t") do |row|

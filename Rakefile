@@ -9,7 +9,7 @@ task :import do
   `curl http://www.worldcubeassociation.org/results/misc/#{filename} > data/download.zip`
   `unzip -o data/download.zip -d data`
 
-  app = WCAApi.new('redis://localhost:6379/1')
+  app = WCAApi.new('redis://redis/1')
   app.reset_db!
   persons_tsv = File.expand_path("../data/WCA_export_Persons.tsv", __FILE__)
   results_tsv = File.expand_path("../data/WCA_export_Results.tsv", __FILE__)
