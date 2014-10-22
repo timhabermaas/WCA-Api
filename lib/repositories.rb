@@ -61,3 +61,25 @@ class CompetitorRepository
       n ? n.to_i : nil
     end
 end
+
+class RecordRepository
+  def initialize(redis_url)
+    @redis = Redis.new(url: redis_url)
+  end
+
+  def add_single_record!(competitor_id, event_id, result)
+    @redis.zadd("records:#{event_id}:single", result, competitor_id)
+  end
+
+  def add_average_record!(competitor_id, event_id, result)
+    @redis.zadd("records:#{event_id}:average", result, competitor_id)
+  end
+
+  def list_single_records(event_id)
+    @redis.zrange("records:#{event_id}:single", 0, -1, with_scores: true)
+  end
+
+  def list_average_records(event_id)
+    @redis.zrange("records:#{event_id}:average", 0, -1, with_scores: true)
+  end
+end

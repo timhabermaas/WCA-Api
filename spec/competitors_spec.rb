@@ -9,7 +9,7 @@ describe "competitors endpoint" do
     end
 
     it "returns 200 Ok" do
-      expect(last_response.status).to eq 200
+      expect(last_status).to eq 200
     end
 
     let(:person) { json_response["competitor"] }
