@@ -46,14 +46,20 @@ class WCAApi
   end
 
   def list_single_records(event_id)
-    @record_repo.list_single_records(event_id).map do |id|
-      @competitor_repo.find(id.first).merge(result: id.last)
+    @record_repo.list_single_records(event_id).map do |pair|
+      {
+        competitor: @competitor_repo.find(pair.first),
+        result: pair.last.to_i
+      }
     end
   end
 
   def list_average_records(event_id)
-    @record_repo.list_average_records(event_id).map do |id|
-      @competitor_repo.find(id.first).merge(result: id.last)
+    @record_repo.list_average_records(event_id).map do |pair|
+      {
+        competitor: @competitor_repo.find(pair.first),
+        result: pair.last.to_i
+      }
     end
   end
 end
