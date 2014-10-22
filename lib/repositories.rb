@@ -19,6 +19,18 @@ class CompetitorRepository
     @redis.sadd("competitors:#{id}:comp_ids", comp_id)
   end
 
+  def set_single_record!(id, event_id, time)
+    @redis.sadd("competitors:#{id}:single:eventIds", event_id)
+    @redis.sadd("competitors:#{id}:eventIds", event_id)
+    @redis.set("competitors:#{id}:single:#{event_id}", time)
+  end
+
+  def set_average_record!(id, event_id, time)
+    @redis.sadd("competitors:#{id}:average:eventIds", event_id)
+    @redis.sadd("competitors:#{id}:eventIds", event_id)
+    @redis.set("competitors:#{id}:average:#{event_id}", time)
+  end
+
   def find(id)
     JSON.parse(@redis.get("competitors:#{id}")).tap do |c|
       c["competition_count"] = @redis.scard("competitors:#{id}:comp_ids")
@@ -31,4 +43,21 @@ class CompetitorRepository
       find(id)
     end
   end
+
+  def records(id)
+    events = @redis.smembers("competitors:#{id}:eventIds")
+    result = {}
+    events.map do |event_id|
+      result[event_id] = {
+        single: nil_or_number(@redis.get("competitors:#{id}:single:#{event_id}")),
+        average: nil_or_number(@redis.get("competitors:#{id}:average:#{event_id}"))
+      }
+    end
+    result
+  end
+
+  private
+    def nil_or_number(n)
+      n ? n.to_i : nil
+    end
 end

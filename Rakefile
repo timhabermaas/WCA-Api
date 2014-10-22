@@ -13,5 +13,7 @@ task :import do
   app.reset_db!
   persons_tsv = File.expand_path("../data/WCA_export_Persons.tsv", __FILE__)
   results_tsv = File.expand_path("../data/WCA_export_Results.tsv", __FILE__)
-  app.import!(persons_tsv, results_tsv)
+  single_tsv = File.expand_path("../data/WCA_export_RanksSingle.tsv", __FILE__)
+  average_tsv = File.expand_path("../data/WCA_export_RanksAverage.tsv", __FILE__)
+  app.import!(persons_tsv, results_tsv, single_tsv, average_tsv)
 end

@@ -2,10 +2,7 @@ require_relative '../lib/api'
 require 'rack/test'
 
 def app
-  single_tsv = File.expand_path("../fixtures/ranks-single.tsv", __FILE__)
-  average_tsv = File.expand_path("../fixtures/ranks-average.tsv", __FILE__)
-  results_tsv = File.expand_path("../fixtures/results.tsv", __FILE__)
-  Api.new(single_tsv, average_tsv, results_tsv, application)
+  Api.new(application)
 end
 
 def application
@@ -25,6 +22,8 @@ RSpec.configure do |c|
     application.reset_db!
     person_tsv = File.expand_path("../fixtures/persons.tsv", __FILE__)
     results_tsv = File.expand_path("../fixtures/results.tsv", __FILE__)
-    application.import!(person_tsv, results_tsv)
+    single_tsv = File.expand_path("../fixtures/ranks-single.tsv", __FILE__)
+    average_tsv = File.expand_path("../fixtures/ranks-average.tsv", __FILE__)
+    application.import!(person_tsv, results_tsv, single_tsv, average_tsv)
   end
 end

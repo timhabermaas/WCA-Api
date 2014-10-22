@@ -12,7 +12,7 @@ describe "competitors endpoint" do
       expect(last_response.status).to eq 200
     end
 
-    let(:person) { json_response["person"] }
+    let(:person) { json_response["competitor"] }
 
     it "returns the information for that guy" do
       expect(person["name"]).to eq "Ron van Bruchem"
@@ -47,6 +47,8 @@ describe "competitors endpoint" do
 
       it "returns a hash containing all records for that person" do
         expect(json_response["records"]["333"]["single"]).to eq 871
+        expect(json_response["records"]["333bf"]["single"]).to eq 36256
+        expect(json_response["records"]["333bf"]["average"]).to eq nil
         expect(json_response["records"]["333fm"]["single"]).to eq 25
         expect(json_response["records"]["333"]["average"]).to eq 1262
         expect(json_response["records"]["444"]["average"]).to eq 5219

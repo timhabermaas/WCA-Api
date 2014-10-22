@@ -9,12 +9,18 @@ class WCAApi
     @competitor_repo = CompetitorRepository.new(redis_url)
   end
 
-  def import!(competitors_tsv, results_tsv)
+  def import!(competitors_tsv, results_tsv, singles_tsv, averages_tsv)
     CSV.foreach(competitors_tsv, headers: true, col_sep: "\t") do |row|
       @competitor_repo.save!({id: row["id"], sub_id: row["subid"], country: row["countryId"], gender: row["gender"], name: row["name"], })
     end
     CSV.foreach(results_tsv, headers: true, col_sep: "\t") do |row|
       @competitor_repo.attend_comp!(row["personId"], row["competitionId"])
+    end
+    CSV.foreach(singles_tsv, headers: true, col_sep: "\t") do |row|
+      @competitor_repo.set_single_record!(row["personId"], row["eventId"], row["best"])
+    end
+    CSV.foreach(averages_tsv, headers: true, col_sep: "\t") do |row|
+      @competitor_repo.set_average_record!(row["personId"], row["eventId"], row["best"])
     end
   end
 
@@ -31,19 +37,16 @@ class WCAApi
   def search_competitor(id)
     @competitor_repo.search(id)
   end
+
+  def find_records(id)
+    @competitor_repo.records(id)
+  end
 end
 
 class Api < Sinatra::Base
   set :show_exceptions, true
 
-  def initialize(single_tsv, average_tsv, results_tsv, core)
-    @single_results = load_array_from_csv(single_tsv)
-    @average_results = load_array_from_csv(average_tsv)
-    @competitions = Hash.new { |h, k| h[k] = Set.new }
-    load_from_csv(results_tsv) do |row|
-      @competitions[row[7]] << row[0]
-    end
-
+  def initialize(core)
     @core = core
     super()
   end
@@ -51,60 +54,24 @@ class Api < Sinatra::Base
   get "/competitors/:id/?" do
     id = params[:id]
     r = @core.find_competitor(id)
-    JSON.generate({person: r})
+    generate_json({competitor: r})
   end
 
   get "/competitors/?" do
     result = @core.search_competitor(params[:q])
-    JSON.generate({competitors: result})
+    generate_json({competitors: result})
   end
 
   get "/competitors/:id/records" do
-    singles = @single_results.select { |r| r[0] == params[:id] }.map { |r| hashify_record(r) }
+    records = @core.find_records(params[:id])
 
-    return status 404 if singles.empty?
+    return status 404 if records.empty?
 
-    averages = @average_results.select { |r| r[0] == params[:id] }.map { |r| hashify_record(r) }
-    temp = Hash.new { |h, k| h[k] = {} }
-    singles.group_by { |r| r[:eventId] }.each do |event, times|
-      temp[event][:single] = times.first[:time]
-    end
-    averages.group_by { |r| r[:eventId] }.each do |event, times|
-      temp[event][:average] = times.first[:time]
-    end
-    JSON.generate({records: temp})
+    generate_json({records: @core.find_records(params[:id])})
   end
 
   private
-    def hashify_record(record)
-      {
-        eventId: record[1],
-        time: record[2].to_i,
-      }
-    end
-
-    def hashify_person(person)
-      {
-        id: person[0],
-        name: person[2],
-        country: person[3],
-        gender: person[4],
-        competition_count: person[5],
-      }
-    end
-
-    def load_from_csv(file)
-      CSV.foreach(file, col_sep: "\t") do |row|
-        yield row
-      end
-    end
-
-    def load_array_from_csv(file)
-      result = []
-      load_from_csv(file) do |row|
-        result << row
-      end
-      result.shift
-      result
+    def generate_json(hash)
+      JSON.generate hash
     end
 end
