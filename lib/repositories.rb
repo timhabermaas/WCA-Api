@@ -17,6 +17,7 @@ class CompetitorRepository
 
   def attend_comp!(id, comp_id)
     @redis.sadd("competitors:#{id}:comp_ids", comp_id)
+    # TODO update comp counter
   end
 
   def set_single_record!(id, event_id, time)
@@ -32,6 +33,8 @@ class CompetitorRepository
   end
 
   def find(id)
+    #TODO move competition_count to json
+    #TODO don't use json, use redis hash
     JSON.parse(@redis.get("competitors:#{id}")).tap do |c|
       c["competition_count"] = @redis.scard("competitors:#{id}:comp_ids")
     end
