@@ -8,7 +8,8 @@ class CompetitorRepository
 
   def save!(competitor)
     id = competitor[:id]
-    @redis.set("competitors:#{id}", competitor.to_json)
+    competitor = competitor.map { |k, v| [k, v] }
+    @redis.hmset("competitors:#{id}", *competitor)
 
     id.size.times do |i|
       @redis.zadd("competitors:search:#{id[0..i]}", 0, id)
@@ -18,6 +19,7 @@ class CompetitorRepository
   def attend_comp!(id, comp_id)
     @redis.sadd("competitors:#{id}:comp_ids", comp_id)
     # TODO update comp counter
+    @redis.hset("competitors:#{id}", "competition_count", @redis.scard("competitors:#{id}:comp_ids"))
   end
 
   def set_single_record!(id, event_id, time)
@@ -33,10 +35,8 @@ class CompetitorRepository
   end
 
   def find(id)
-    #TODO move competition_count to json
-    #TODO don't use json, use redis hash
-    JSON.parse(@redis.get("competitors:#{id}")).tap do |c|
-      c["competition_count"] = @redis.scard("competitors:#{id}:comp_ids")
+    @redis.hgetall("competitors:#{id}").tap do |c|
+      c["competition_count"] = c["competition_count"].to_i
     end
   end
 
