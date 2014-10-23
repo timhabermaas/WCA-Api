@@ -16,9 +16,9 @@ class CompetitorRepository
     end
   end
 
-  def attend_comps!(id, comp_ids)
-    @redis.sadd("competitors:#{id}:comp_ids", comp_ids)
-    @redis.hset("competitors:#{id}", "competition_count", comp_ids.size)
+  def attend_comp!(id, comp_id)
+    @redis.sadd("competitors:#{id}:comp_ids", comp_id)
+    @redis.hset("competitors:#{id}", "competition_count", @redis.scard("competitors:#{id}:comp_ids"))
   end
 
   def set_single_record!(id, event_id, time)

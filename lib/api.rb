@@ -11,29 +11,14 @@ class WCAApi
     @record_repo = RecordRepository.new(@redis)
   end
 
-  def measure
-    t = Time.now
-    yield
-    p("Took: #{Time.now - t}")
-  end
-
-  def ignore
-  end
-
   def import!(competitors_tsv, results_tsv, singles_tsv, averages_tsv)
     @redis.pipelined do
       CSV.foreach(competitors_tsv, headers: true, col_sep: "\t") do |row|
         @competitor_repo.save!({id: row["id"], sub_id: row["subid"], country: row["countryId"], gender: row["gender"], name: row["name"], })
       end
     end
-    comps = Hash.new { |h, k| h[k] = Set.new }
     CSV.foreach(results_tsv, headers: true, col_sep: "\t") do |row|
-      comps[row["personId"]] << row["competitionId"]
-    end
-    @redis.pipelined do
-      comps.each do |person, comps|
-        @competitor_repo.attend_comps!(person, comps.to_a)
-      end
+      @competitor_repo.attend_comp!(row["personId"], row["competitionId"])
     end
     @redis.pipelined do
       CSV.foreach(singles_tsv, headers: true, col_sep: "\t") do |row|
