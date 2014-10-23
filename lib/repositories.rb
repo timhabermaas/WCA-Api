@@ -2,8 +2,8 @@ require 'redis'
 require 'json'
 
 class CompetitorRepository
-  def initialize(redis_url)
-    @redis = Redis.new(url: redis_url)
+  def initialize(redis)
+    @redis = redis
   end
 
   def save!(competitor)
@@ -16,10 +16,9 @@ class CompetitorRepository
     end
   end
 
-  def attend_comp!(id, comp_id)
-    @redis.sadd("competitors:#{id}:comp_ids", comp_id)
-    # TODO update comp counter
-    @redis.hset("competitors:#{id}", "competition_count", @redis.scard("competitors:#{id}:comp_ids"))
+  def attend_comps!(id, comp_ids)
+    @redis.sadd("competitors:#{id}:comp_ids", comp_ids)
+    @redis.hset("competitors:#{id}", "competition_count", comp_ids.size)
   end
 
   def set_single_record!(id, event_id, time)
@@ -66,8 +65,8 @@ class CompetitorRepository
 end
 
 class RecordRepository
-  def initialize(redis_url)
-    @redis = Redis.new(url: redis_url)
+  def initialize(redis)
+    @redis = redis
   end
 
   def add_single_record!(competitor_id, event_id, result)

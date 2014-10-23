@@ -6,24 +6,46 @@ require_relative './repositories'
 class WCAApi
   def initialize(redis_url)
     @redis_url = redis_url
-    @competitor_repo = CompetitorRepository.new(redis_url)
-    @record_repo = RecordRepository.new(redis_url)
+    @redis = Redis.new(url: redis_url)
+    @competitor_repo = CompetitorRepository.new(@redis)
+    @record_repo = RecordRepository.new(@redis)
+  end
+
+  def measure
+    t = Time.now
+    yield
+    p("Took: #{Time.now - t}")
+  end
+
+  def ignore
   end
 
   def import!(competitors_tsv, results_tsv, singles_tsv, averages_tsv)
-    CSV.foreach(competitors_tsv, headers: true, col_sep: "\t") do |row|
-      @competitor_repo.save!({id: row["id"], sub_id: row["subid"], country: row["countryId"], gender: row["gender"], name: row["name"], })
+    @redis.pipelined do
+      CSV.foreach(competitors_tsv, headers: true, col_sep: "\t") do |row|
+        @competitor_repo.save!({id: row["id"], sub_id: row["subid"], country: row["countryId"], gender: row["gender"], name: row["name"], })
+      end
     end
-    CSV.foreach(results_tsv, headers: true, col_sep: "\t", encoding: "UTF-8") do |row|
-      @competitor_repo.attend_comp!(row["personId"], row["competitionId"])
+    comps = Hash.new { |h, k| h[k] = Set.new }
+    CSV.foreach(results_tsv, headers: true, col_sep: "\t") do |row|
+      comps[row["personId"]] << row["competitionId"]
     end
-    CSV.foreach(singles_tsv, headers: true, col_sep: "\t") do |row|
-      @competitor_repo.set_single_record!(row["personId"], row["eventId"], row["best"].to_i)
-      @record_repo.add_single_record!(row["personId"], row["eventId"], row["best"].to_i)
+    @redis.pipelined do
+      comps.each do |person, comps|
+        @competitor_repo.attend_comps!(person, comps.to_a)
+      end
     end
-    CSV.foreach(averages_tsv, headers: true, col_sep: "\t") do |row|
-      @competitor_repo.set_average_record!(row["personId"], row["eventId"], row["best"].to_i)
-      @record_repo.add_average_record!(row["personId"], row["eventId"], row["best"].to_i)
+    @redis.pipelined do
+      CSV.foreach(singles_tsv, headers: true, col_sep: "\t") do |row|
+        @competitor_repo.set_single_record!(row["personId"], row["eventId"], row["best"].to_i)
+        @record_repo.add_single_record!(row["personId"], row["eventId"], row["best"].to_i)
+      end
+    end
+    @redis.pipelined do
+      CSV.foreach(averages_tsv, headers: true, col_sep: "\t") do |row|
+        @competitor_repo.set_average_record!(row["personId"], row["eventId"], row["best"].to_i)
+        @record_repo.add_average_record!(row["personId"], row["eventId"], row["best"].to_i)
+      end
     end
   end
 
